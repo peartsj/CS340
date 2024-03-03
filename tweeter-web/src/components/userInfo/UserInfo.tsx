@@ -1,9 +1,13 @@
 import "./UserInfo.css";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { AuthToken, FakeData, User } from "tweeter-shared";
+import { AuthToken, User } from "tweeter-shared";
 import useToastListener from "../toaster/ToastListenerHook";
 import useUserInfoListener from "./UserInfoListenerHook";
+import {
+  UserInfoPresenter,
+  UserInfoView,
+} from "../../presenter/UserInfoPresenter";
 
 const UserInfo = () => {
   const [isFollower, setIsFollower] = useState(false);
@@ -20,80 +24,42 @@ const UserInfo = () => {
   }
 
   useEffect(() => {
-    setIsFollowerStatus(currentAuthToken!, presentUser!, presentedUser!);
+    setIsFollowerStatus();
     setNumbFollowees(currentAuthToken!, presentedUser!);
     setNumbFollowers(currentAuthToken!, presentedUser!);
   });
 
-  const setIsFollowerStatus = async (
-    authToken: AuthToken,
-    currentUser: User,
-    displayedUser: User
-  ) => {
-    try {
-      if (currentUser === displayedUser) {
-        setIsFollower(false);
-      } else {
-        setIsFollower(
-          await getIsFollowerStatus(authToken!, currentUser!, displayedUser!)
-        );
-      }
-    } catch (error) {
-      displayErrorMessage(
-        `Failed to determine follower status because of exception: ${error}`
-      );
-    }
+  const Listener: UserInfoView = {
+    setIsFollower: setIsFollower,
+    displayErrorMessage: displayErrorMessage,
+    displayInfoMessage: displayInfoMessage,
+    clearLastInfoMessage: clearLastInfoMessage,
+    setFolloweesCount: setFolloweesCount,
+    setFollowersCount: setFollowersCount,
   };
 
-  const getIsFollowerStatus = async (
-    authToken: AuthToken,
-    user: User,
-    selectedUser: User
-  ): Promise<boolean> => {
-    // TODO: Replace with the result of calling server
-    return FakeData.instance.isFollower();
+  const presenter = new UserInfoPresenter(Listener);
+
+  const setIsFollowerStatus = async () => {
+    await presenter.setIsFollowerStatus(
+      currentAuthToken!,
+      presentUser!,
+      presentedUser!
+    );
   };
 
   const setNumbFollowees = async (
     authToken: AuthToken,
     displayedUser: User
   ) => {
-    try {
-      setFolloweesCount(await getFolloweesCount(authToken, displayedUser));
-    } catch (error) {
-      displayErrorMessage(
-        `Failed to get followees count because of exception: ${error}`
-      );
-    }
-  };
-
-  const getFolloweesCount = async (
-    authToken: AuthToken,
-    user: User
-  ): Promise<number> => {
-    // TODO: Replace with the result of calling server
-    return FakeData.instance.getFolloweesCount(user);
+    await presenter.setNumbFollowees(authToken, displayedUser);
   };
 
   const setNumbFollowers = async (
     authToken: AuthToken,
     displayedUser: User
   ) => {
-    try {
-      setFollowersCount(await getFollowersCount(authToken, displayedUser));
-    } catch (error) {
-      displayErrorMessage(
-        `Failed to get followers count because of exception: ${error}`
-      );
-    }
-  };
-
-  const getFollowersCount = async (
-    authToken: AuthToken,
-    user: User
-  ): Promise<number> => {
-    // TODO: Replace with the result of calling server
-    return FakeData.instance.getFollowersCount(user);
+    await presenter.setNumbFollowers(authToken, displayedUser);
   };
 
   const switchToLoggedInUser = (event: React.MouseEvent): void => {
@@ -104,89 +70,28 @@ const UserInfo = () => {
   const followDisplayedUser = async (
     event: React.MouseEvent
   ): Promise<void> => {
-    event.preventDefault();
-
-    try {
-      displayInfoMessage(`Adding ${presentedUser!.name} to followers...`, 0);
-
-      let [followersCount, followeesCount] = await follow(
-        currentAuthToken!,
-        presentedUser!
-      );
-
-      clearLastInfoMessage();
-
-      setIsFollower(true);
-      setFollowersCount(followersCount);
-      setFolloweesCount(followeesCount);
-    } catch (error) {
-      displayErrorMessage(
-        `Failed to follow user because of exception: ${error}`
-      );
-    }
-  };
-
-  const follow = async (
-    authToken: AuthToken,
-    userToFollow: User
-  ): Promise<[followersCount: number, followeesCount: number]> => {
-    // Pause so we can see the following message. Remove when connected to the server
-    await new Promise((f) => setTimeout(f, 2000));
-
-    // TODO: Call the server
-
-    let followersCount = await getFollowersCount(authToken, userToFollow);
-    let followeesCount = await getFolloweesCount(authToken, userToFollow);
-
-    return [followersCount, followeesCount];
+    await presenter.followDisplayedUser(
+      event,
+      presentedUser!,
+      currentAuthToken!
+    );
   };
 
   const unfollowDisplayedUser = async (
     event: React.MouseEvent
   ): Promise<void> => {
-    event.preventDefault();
-
-    try {
-      displayInfoMessage(
-        `Removing ${presentedUser!.name} from followers...`,
-        0
-      );
-
-      let [followersCount, followeesCount] = await unfollow(
-        currentAuthToken!,
-        presentedUser!
-      );
-
-      clearLastInfoMessage();
-
-      setIsFollower(false);
-      setFollowersCount(followersCount);
-      setFolloweesCount(followeesCount);
-    } catch (error) {
-      displayErrorMessage(
-        `Failed to unfollow user because of exception: ${error}`
-      );
-    }
-  };
-
-  const unfollow = async (
-    authToken: AuthToken,
-    userToUnfollow: User
-  ): Promise<[followersCount: number, followeesCount: number]> => {
-    // Pause so we can see the unfollowing message. Remove when connected to the server
-    await new Promise((f) => setTimeout(f, 2000));
-
-    // TODO: Call the server
-
-    let followersCount = await getFollowersCount(authToken, userToUnfollow);
-    let followeesCount = await getFolloweesCount(authToken, userToUnfollow);
-
-    return [followersCount, followeesCount];
+    await presenter.unfollowDisplayedUser(
+      event,
+      presentedUser!,
+      currentAuthToken!
+    );
   };
 
   return (
     <>
-      {presentUser === null || presentedUser === null || currentAuthToken === null ? (
+      {presentUser === null ||
+      presentedUser === null ||
+      currentAuthToken === null ? (
         <></>
       ) : (
         <div className="container">

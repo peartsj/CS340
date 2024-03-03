@@ -3,10 +3,10 @@ import "bootstrap/dist/css/bootstrap.css";
 import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import AuthenticationFormLayout from "../AuthenticationFormLayout";
-import { AuthToken, FakeData, User } from "tweeter-shared";
 import useToastListener from "../../toaster/ToastListenerHook";
 import AuthenticationFields from "../AuthenticationFields";
 import useUserInfoListener from "../../userInfo/UserInfoListenerHook";
+import { LoginPresenter, LoginView } from "../../../presenter/LoginPresenter";
 
 interface Props {
   originalUrl?: string;
@@ -28,43 +28,23 @@ const Login = (props: Props) => {
     return !alias || !password;
   };
 
+  const Listener: LoginView = {
+    updateUserInformation: updateUserInformation,
+    navigate: navigate,
+    displayErrorMessage: displayErrorMessage,
+  };
+
+  const presenter = new LoginPresenter(Listener);
+
   const doLogin = async () => {
-    try {
-      let [user, authToken] = await login(alias, password);
-
-      updateUserInformation(user, user, authToken, rememberMeRef.current);
-
-      if (!!props.originalUrl) {
-        navigate(props.originalUrl);
-      } else {
-        navigate("/");
-      }
-    } catch (error) {
-      displayErrorMessage(
-        `Failed to log user in because of exception: ${error}`
-      );
-    }
+    presenter.doLogin(
+      alias,
+      password,
+      rememberMeRef.current,
+      props.originalUrl
+    );
   };
-
-  const login = async (
-    alias: string,
-    password: string
-  ): Promise<[User, AuthToken]> => {
-    // TODO: Replace with the result of calling the server
-    let user = FakeData.instance.firstUser;
-
-    if (user === null) {
-      throw new Error("Invalid alias or password");
-    }
-
-    return [user, FakeData.instance.authToken];
-  };
-
-  interface Props {
-    aliasFn: (event: any) => void;
-    passwordFn: (event: any) => void;
-  }
-
+  
   const inputFieldGenerator = () => {
     return (
       <AuthenticationFields
